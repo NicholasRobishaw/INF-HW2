@@ -1,11 +1,10 @@
 // includes
-#include <main.h>
+#include "main.h"
 
 
 using namespace std;
 // gloabals
- const bool debug_Statements = false;
- const int fragment_Size = 32;
+
 
 // functions
 
@@ -22,55 +21,14 @@ class Queries_AR {
 
     int* found_Frags;
     int frag_Size;
+    
+    const bool debug_Statements = true;
+    const int fragment_Size = 32;
+    
 
     // const int fragment_Size = 32;
 
-    int main(int argc, char* argv[]){
-        // toggle for displaying debug statements
-        if(debug_Statements){
-            cout << "Debug mode on, program start\n";
-        }
-
-        // check if the program has the appropriate number of parameter
-        // create error handler for no input file argument
-        if( argc < 4 ){
-            cout << "Error please input the correct command in\n Program End";
-            return 1;
-        }
-
-        // read in the entire query dataset and store it in an instace of the Querie_AR class
-        if(read_Qurey(argv[2])){
-            // check for if the program will be donig binary search based off the command line parameters
-            if(argv[3] == "-binary"){
-                // sort the query in alphabetical order then
-                sortFragments(query_Data, query_Size, true);
-            }
-            
-            
-            // read in the entire subject dataset into a single, concatenated character array
-            // if(file_reader(argv[1])){
-            //     // search the queries for every fragment ( pass in flag for desiered search algorithm )
-
-            //     // display search time for the first 5k, 10k, 100k, and 1M 32 character long fragments of the subject dataset within the query dataset
-
-            //     // how long would it take to search for every possible 32-long character fragment of the subject dataset within the query dataset
-
-            //     // display the first 15 fragments of the subject dataset along with its indicies that you found within the query_AR object
-            // }
-
-
-            // display program end
-            cout << "Displaying the first 15 SORTED queries" << endl;
-
-            for(int index=0; index<15; index++){
-                for(int col; col<fragment_Size;col++){
-                    cout << query_Data[index][col] << endl;
-
-                }
-            }
-        }
-        return 0;
-    }
+   
 
     // default constructor function
     void initial_Construct(){
@@ -98,14 +56,28 @@ class Queries_AR {
         // allocate initial single array of pointers
         new_Temp = new char*[new_Size];
 
+        if(debug_Statements){
+            cout << "Array of pointers has been dynamically created\n";
+            cout << "Now iterating thorugh rows and allocating 2nd Dimension mem\n";
+        }
+
         // loop thorugh initial array and allocate spaces for each index needed
         for(index=0;index<new_Size;index++){
             // give the pointer some memory
             new_Temp[index] = new char[fragment_Size];
         }
+        
+        if(debug_Statements){
+            cout << "rows have been successfully allocated\n";
+        }
 
         // check if this is NOT the first query
         if(!is_First){
+            
+            if(debug_Statements){
+                cout << "now copying over old array values to new array\n";
+            }   
+            
             // copy data into new array
             for(row=0;row<new_Size;row++){
                 for(col=0;col<fragment_Size;col++){
@@ -113,16 +85,34 @@ class Queries_AR {
                 }
             }
 
+
+            if(debug_Statements){
+                cout << "copy completed, calling destructor\n";
+            } 
+            
             // delete old array
             qurey_Deconstructor(query_Data, query_Size);
 
+            if(debug_Statements){
+                cout << "destructor completed\n";
+            } 
+
         }
+
+        if(debug_Statements){
+            cout << "adding new items to end of array\n";
+        } 
 
         // add new data into the new spot
         for(index=0;index<fragment_Size;index++){
             // ary[y*sizeX + x];
             new_Temp[new_Size-1][index] = new_Query[index];
         }
+
+
+        if(debug_Statements){
+            cout << "new items added, setting ptr values\n";
+        } 
 
         // set pointer to new array
         query_Data = new_Temp;
@@ -151,9 +141,27 @@ class Queries_AR {
                 if(current_Line[0] != '>' && !current_Line.empty()){
                     // increment query count
                     query_Num++;
+                    
+                    
+                    if(debug_Statements){
+                          cout << "rd_Qry-Q_NUM: " << query_Num << endl;
+                          cout << "rd-Qry-curLn: " << current_Line << endl;
+                    } 
+                    
 
                     // resize query array
                     query_Constructor(query_Num, query_Num == 1, current_Line);
+                    
+                    if(debug_Statements){
+                        cout << "rd_Qry: query that returned\n";
+                        for(int dindex = 0; dindex < query_Num; dindex++){
+                            for(int dcol = 0; dcol<fragment_Size; dcol++){
+                                cout << query_Data[dindex][dcol];
+                            }
+                            
+                            cout << endl;
+                        }
+                    }
 
                     // increment query size variable in class
                     query_Size++;
@@ -215,8 +223,8 @@ class Queries_AR {
                     match_Index = binary_Search(target, query_Data, index, high);
                 }
 
-                resize_Int_Arr(found_Frags, frag_Found, frag_Found+1, frag_Found == 0);
-                frag_Found++;
+                resize_Int_Arr(found_Frags, frag_Size, frag_Size+1, frag_Size == 0);
+                frag_Size++;
                 found_Frags[frag_Size] = match_Index;
 
                 // copy_String(found_Frags, genome_Index, new_genome_size, temp_Genome )
@@ -431,7 +439,9 @@ class Queries_AR {
             //     new_Char_Arr[index] = old_Char_Arr[index];
             // }
 
-            strcpy_s(new_Char_Arr, new_size, old_Char_Arr);
+            //strcpy_s(new_Char_Arr, new_size, old_Char_Arr);
+            copy_String(new_Char_Arr, new_size, genome_Size, old_Char_Arr );
+    
 
             // toggle for displaying debug statements
             if( debug_Statements ) {
@@ -685,3 +695,71 @@ class Queries_AR {
     }
 
 }; 
+
+int main(int argc, char* argv[]){
+    Queries_AR my_Query;
+    
+    
+    // toggle for displaying debug statements
+    //if(my_Query.debug_Statements){
+    cout << "Debug mode on, program start\n";
+    //}
+
+    my_Query.initial_Construct();
+    
+    cout << "inital_Cunstruct function returned\n";
+    
+    // check if the program has the appropriate number of parameter
+    // create error handler for no input file argument
+    if( argc < 4 ){
+        cout << "Error please input the correct command in\n Program End";
+        return 1;
+    }
+
+    
+    cout << "Calling to read_Query function\n";
+    
+    // read in the entire query dataset and store it in an instace of the Querie_AR class
+    if(my_Query.read_Qurey(argv[2])){
+        
+        cout << "Sucessful return from read_Query function\n";
+        
+        // check for if the program will be donig binary search based off the command line parameters
+        if(argv[3] == "-binary"){
+        
+            cout << "About to begin sorting queries\n";
+        
+            // sort the query in alphabetical order then
+            my_Query.sortFragments(my_Query.query_Data, my_Query.query_Size, true);
+            
+            cout << "Query sort completed\n";
+        }
+        
+        
+        // read in the entire subject dataset into a single, concatenated character array
+        // if(file_reader(argv[1])){
+        //     // search the queries for every fragment ( pass in flag for desiered search algorithm )
+
+        //     // display search time for the first 5k, 10k, 100k, and 1M 32 character long fragments of the subject dataset within the query dataset
+
+        //     // how long would it take to search for every possible 32-long character fragment of the subject dataset within the query dataset
+
+        //     // display the first 15 fragments of the subject dataset along with its indicies that you found within the query_AR object
+        // }
+
+
+        // display program end
+        cout << "Displaying the first 15 SORTED queries" << endl;
+
+        for(int index=0; index<15; index++){
+            for(int col; col<my_Query.fragment_Size;col++){
+                cout << my_Query.query_Data[index][col] << endl;
+
+            }
+        }
+    }
+    
+    cout << "Program End\n";
+    
+    return 0;
+}
