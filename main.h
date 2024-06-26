@@ -11,7 +11,7 @@ void initial_Construct();
 void query_Constructor(const int new_Size, const bool is_First, const string new_Query);
 bool read_Qurey(const string& file_Name);
 int searchQuery(bool linear);
-void sortFragments(string* query_Data, int size, bool ms);
+void sortFragments(char** query_Data, int size, bool ms);
 bool file_reader(const string& file_Name);
 void qurey_Deconstructor(char** arr_To_Destroy, int size);
 void genome_Deconstructor(char* genome_arr, int size);
