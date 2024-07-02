@@ -1,34 +1,31 @@
 // includes
 #include "main.h"
-
-
 using namespace std;
-// gloabals
 
-
-// functions
-
-// Queries_AR class
 class Queries_AR {
     public:
     // storage for query dataset (2D Array)
-    char** query_Data;
-    int query_Size;
+    char **query_Data;
+    long query_Size;
+    int* found_Frags;
 
     // storage for subject dataset
     char* genome_Data;
-    int genome_Size;
-
-    int* found_Frags;
-    int frag_Size;
+    long genome_Size;
+    long scaffold_Count = 0;
     
-    const bool debug_Statements = true;
-    const int fragment_Size = 32;
+    const bool debug_Statements = false;
     
-
-    // const int fragment_Size = 32;
-
-   
+    // 5k, 10K, 100K, and 1M time stamps
+    time_t prog_Start = 0,
+           five_Thousand = 0,
+           one_Hund_Thousand = 0,
+           one_Million = 0,
+           prog_End = 0;
+           
+    const int fragment_Size = 33;
+    const long MAX_FRAGMENTS = 100000000; 
+    const long MAX_SCAFFOLD_COUNT = 10000;
 
     // default constructor function
     void initial_Construct(){
@@ -39,85 +36,43 @@ class Queries_AR {
         genome_Size = 0;
 
         found_Frags = nullptr;
-        frag_Size = 0;
     }
 
     // custom constructor function for resizing the mulitdimesional array
     void query_Constructor(const int new_Size, const bool is_First, const string new_Query){
         int index, row, col;
-        char** new_Temp = nullptr;
-
-        // toggle for displaying debug statements
-        if( debug_Statements ){
-            cout << "entered query_Constructor function\n";
-            cout << "New size: " << new_Size << endl;
-        }
+        char **new_Temp = nullptr;
 
         // allocate initial single array of pointers
-        new_Temp = new char*[new_Size];
-
-        if(debug_Statements){
-            cout << "Array of pointers has been dynamically created\n";
-            cout << "Now iterating thorugh rows and allocating 2nd Dimension mem\n";
-        }
-
+        new_Temp = new char *[new_Size];
+    
         // loop thorugh initial array and allocate spaces for each index needed
-        for(index=0;index<new_Size;index++){
+        for(index=query_Size;index<new_Size;index++){
             // give the pointer some memory
             new_Temp[index] = new char[fragment_Size];
-        }
-        
-        if(debug_Statements){
-            cout << "rows have been successfully allocated\n";
         }
 
         // check if this is NOT the first query
         if(!is_First){
-            
-            if(debug_Statements){
-                cout << "now copying over old array values to new array\n";
-            }   
-            
-            // copy data into new array
-            for(row=0;row<new_Size;row++){
-                for(col=0;col<fragment_Size;col++){
-                    new_Temp[row][col] = query_Data[row][col];
-                }
+            // copy data into new array ( at same index )
+            for(row=0;row<query_Size;row++){
+                new_Temp[row] = query_Data[row];
             }
-
-
-            if(debug_Statements){
-                cout << "copy completed, calling destructor\n";
-            } 
             
             // delete old array
-            qurey_Deconstructor(query_Data, query_Size);
-
-            if(debug_Statements){
-                cout << "destructor completed\n";
-            } 
-
+            delete[] query_Data;
         }
-
-        if(debug_Statements){
-            cout << "adding new items to end of array\n";
-        } 
 
         // add new data into the new spot
-        for(index=0;index<fragment_Size;index++){
-            // ary[y*sizeX + x];
+        for(index=0;index<fragment_Size-1;index++){
             new_Temp[new_Size-1][index] = new_Query[index];
         }
-
-
-        if(debug_Statements){
-            cout << "new items added, setting ptr values\n";
-        } 
+        
+        // add null terminating character
+        new_Temp[new_Size-1][fragment_Size-1] = '\0';
 
         // set pointer to new array
         query_Data = new_Temp;
-        new_Temp = nullptr;
-
     }
 
     // read query dataset file function
@@ -125,6 +80,8 @@ class Queries_AR {
         ifstream file(file_Name);
         string current_Line;
         int query_Num = 0;
+        time_t stop_Watch = 0;
+        bool runLoop = true;
         
         // check if the file can be opened
         if (!file.is_open()) {
@@ -136,40 +93,52 @@ class Queries_AR {
         // error handling for mainly bad_allocs or segmentation faults
         try {
             // iterate through file contents line by line
-            while (getline(file, current_Line)) {
+            while ( query_Size < MAX_FRAGMENTS && getline(file, current_Line)) {
+                
+                // timestamps for checkng program progress
+                if(query_Size == 1000 - 1){
+                    time(&stop_Watch);
+                    cout << " Read in 1000 fragments at: " << ctime(&stop_Watch) << endl;
+                }
+                
+                if(query_Size == 10000 - 1){
+                    time(&stop_Watch);
+                    cout << " Read in 10000 fragments at: " << ctime(&stop_Watch) << endl;
+                }
+                
+                if(query_Size == 500000 - 1){
+                    time(&stop_Watch);
+                    cout << " Read in 500000 fragments at:" << ctime(&stop_Watch) << endl;
+                }
+                
+                if(query_Size == 1000000 - 1){
+                    time(&stop_Watch);
+                    cout << " Read in 1000000 fragments at: " << ctime(&stop_Watch) << endl;
+                }
+                
                 // check if we are at a valid fragment
                 if(current_Line[0] != '>' && !current_Line.empty()){
                     // increment query count
                     query_Num++;
                     
-                    
                     if(debug_Statements){
                           cout << "rd_Qry-Q_NUM: " << query_Num << endl;
                           cout << "rd-Qry-curLn: " << current_Line << endl;
                     } 
-                    
 
-                    // resize query array
+                    // resize query array and add new data
                     query_Constructor(query_Num, query_Num == 1, current_Line);
-                    
-                    if(debug_Statements){
-                        cout << "rd_Qry: query that returned\n";
-                        for(int dindex = 0; dindex < query_Num; dindex++){
-                            for(int dcol = 0; dcol<fragment_Size; dcol++){
-                                cout << query_Data[dindex][dcol];
-                            }
-                            
-                            cout << endl;
-                        }
-                    }
 
                     // increment query size variable in class
                     query_Size++;
                 }
 
-                
+                // check if the end of file has been reached to kill the loop
+                if(file.eof()){
+                    cout << "End of file reached, breaking loop\n";
+                    break;
+                }               
             }
-
             // close the file
             file.close();
 
@@ -189,75 +158,38 @@ class Queries_AR {
             return false;
         }
 
-        return 0;
+        // return failure
+        return false;
     }
 
     // search function
-    int searchQuery(bool linear){
-        long index = 0, high, target_Index = 0, target_Index_Src = 0, match_Index;
-        bool frag_Found = false;
-        int query_Index = 0;
-        string target = "";
-
-        // iterate through 32-character long fragments of the subject dataset, searching for each one in the query dataset
-        while(index < genome_Size && !frag_Found){
-
-            high = index+=fragment_Size;
-
-            if( high < genome_Size ){
-                target_Index_Src = 0;
-                target = "";
-
-                for(target_Index = index; target_Index<high; target_Index++){
-                    target[target_Index_Src] = genome_Data[target_Index];
-                    target_Index_Src;
-                }
-
-
-                // linear Search?
-                if(linear){
-                    match_Index = linear_Search(target, query_Data, index, high, query_Size);
-                }
-                // Binary Search?
-                else{
-                    match_Index = binary_Search(target, query_Data, index, high);
-                }
-
-                resize_Int_Arr(found_Frags, frag_Size, frag_Size+1, frag_Size == 0);
-                frag_Size++;
-                found_Frags[frag_Size] = match_Index;
-
-                // copy_String(found_Frags, genome_Index, new_genome_size, temp_Genome )
-                query_Index++;
-            }
-
-
-
-            index+=fragment_Size;
+    void searchQuery(bool linear){
+        // if linear search was chosen
+        // O(n)
+        if(linear){
+            linear_Search();    
         }
-
-        // return index of match or negative value if no hit was found
-        return 0;
+        // otherwise assume binary Search
+        // O(query_Size log query_Size)
+        else{
+            binary_Search();
+        }
     }
 
     // sort fragments function
     void sortFragments(char** query_Data, int size, bool ms){
-        // variables
-
         // sort all character fragments in alpahbetical order (lexicographic) order (logorithmic runtime!)
         // check for merge sort code
         if(ms){
-            mergeSort(query_Data, 0, size);
+            mergeSort( 0, size);
         }
         // otherwise assume bubble sort
         else{
             bubbleSort(query_Data, size);
         }
-
     }
 
     // function to read in the genome data
-    // function for reading genome file ( LOOK AT THIS WHEN WE GET THE INPUT FILE )
     bool file_reader(const string& file_Name) {
         // variables
         ifstream file(file_Name);
@@ -265,9 +197,11 @@ class Queries_AR {
         string current_Line;
         string temp_Genome = "";
         long new_genome_size;
-        long protein_Count;
+        long protein_Count = 0;
         long genome_Index;
-        long index;
+        unsigned long index;
+        time_t stop_Watch = 0;
+        bool runLoop = true;
 
         // check if the file can be opened
         if (!file.is_open()) {
@@ -279,55 +213,86 @@ class Queries_AR {
         // error handling for mainly bad_allocs or segmentation faults
         try {
             // iterate through file contents line by line
-            while (getline(file, current_Line)) {
+            while ( scaffold_Count < MAX_SCAFFOLD_COUNT && getline(file, current_Line)) {
+                
                 // check if we hit a header
-                if(current_Line[0] == '>'){
-                    // increment scaffold count by 1
-                    genome_Size++;
+                if(current_Line[0] == '>' && !temp_Genome.empty()){
                     
-                    // check and make sure that there is a genome thats ready to be processed
-                    if( !temp_Genome.empty()){
-                        // grab the protein count of the current scaffold
-                        protein_Count = temp_Genome.length();
-                        
-                        // calculate new size for genome array
-                        genome_Index = genome_Size;
-                        new_genome_size = genome_Size + protein_Count;
-        
-                        // toggle for displaying debug statements
-                        if( debug_Statements ){
-                            cout << "Resizing genome array to fit current scaffold\n";
-                        }
-        
-                        // resize the genome array to fit last scaffold and copy data into new array
-                        genome_Data = resize_Char_Arr(genome_Data, genome_Size, new_genome_size, 
-                                                                    genome_Size == 0);
-        
-                        // toggle for displaying debug statements
-                        if( debug_Statements ){
-                            cout << "Resize completed adding new values to genome\n";
-                        }
-        
-                        // concatenate the temp_Genome string into the genome character array
-                        copy_String(genome_Data, genome_Index, new_genome_size, temp_Genome );
-        
-                        // set the new tracking size for the genome
-                        genome_Size = new_genome_size;
-        
-                        // reset the temp genome string to empty
-                        temp_Genome = "";
+                    // checks for program progress
+                    if(scaffold_Count == 100){
+                        time(&stop_Watch);
+                        cout << "  Read in first 100 scaffolds at: " << ctime(&stop_Watch) << endl; 
                     }
+                    
+                    if(scaffold_Count == 300){
+                        time(&stop_Watch);
+                        cout << "  Read in first 300 scaffolds at: " << ctime(&stop_Watch) << endl; 
+                    }
+                    
+                    if(scaffold_Count == 500){
+                        time(&stop_Watch);
+                        cout << "  Read in first 500 scaffolds at: " << ctime(&stop_Watch) << endl; 
+                    }
+                    
+                    // increment scaffold count by 1
+                    scaffold_Count++;
+                    
+                    // grab the protein count of the current scaffold
+                    protein_Count = temp_Genome.length();
+                    
+                    // calculate new size for genome array
+                    genome_Index = genome_Size;
+                    new_genome_size = genome_Size + protein_Count;
+    
+                    // toggle for displaying debug statements
+                    if( debug_Statements ){
+                        cout << "Resizing genome array to fit current scaffold\n";
+                    }
+    
+                    // resize the genome array to fit last scaffold and copy data into new array
+                    genome_Data = resize_Char_Arr(genome_Data, new_genome_size, 
+                                                                genome_Size == 0);
+    
+                    // toggle for displaying debug statements
+                    if( debug_Statements ){
+                        cout << "Resize completed adding new values to genome\n";
+                    }
+    
+                    // concatenate the temp_Genome string into the genome character array
+                    copy_String(genome_Data, genome_Index, new_genome_size, temp_Genome );
+    
+                    // set the new tracking size for the genome
+                    genome_Size = new_genome_size;
+    
+                    // reset the temp genome string to empty
+                    temp_Genome = "";  
                 }
 
-                // check if the line is not empty or a header
+                // otherwise assume valid character stream for genome
                 else if (!current_Line.empty() && current_Line[0] != '>') {
-                    // add to the current scaffold string
-                    temp_Genome += current_Line;
+                    // Iterate through current line and append characters to temp_Genome
+                    for (index = 0; index < current_Line.length() && index < 80; index++) {
+                        if( current_Line[index] == 'A' 
+                         || current_Line[index] == 'C' 
+                         || current_Line[index] == 'G' 
+                         || current_Line[index] == 'T'
+                         || current_Line[index] == 'N'){
+
+                            // Append character to temp_Genome
+                            temp_Genome += current_Line[index];
+                        }
+                    }
+                }
+                
+                if(file.eof()){
+                    cout << "End of file reached, breaking loop\n";
+                    break;
                 }
             }
 
             // post append information of last scaffold
             if (!temp_Genome.empty()) {
+                
                 // toggle for displaying debug statements
                 if( debug_Statements ){
                     cout << "Last scaffold post loop being processed\n";
@@ -338,21 +303,15 @@ class Queries_AR {
                 
                 // calculate new genome array size
                 new_genome_size = genome_Size + protein_Count;
-                
-                // toggle for displaying debug statements
-                if( debug_Statements ) {
-                    cout << "Resizing genome arr for last scaffold\n";
-                }
 
                 // resize the genome array to fit last scaffold and copy data into new array
-                genome_Data = resize_Char_Arr(genome_Data, genome_Size, new_genome_size, genome_Size == 0);
+                genome_Data = resize_Char_Arr(genome_Data, new_genome_size, genome_Size == 0);
 
                 // concatenate the temp_Genome string into the genome character array
                 copy_String(genome_Data, genome_Index, new_genome_size, temp_Genome );
 
                 // set genome size tracker
                 genome_Size = new_genome_size;
-
             }
 
             // close the file
@@ -380,29 +339,40 @@ class Queries_AR {
     void qurey_Deconstructor(char** arr_To_Destroy, int size){
         int index;
 
+        // free memory for each pointer inside the array
         for(index=0;index<size;index++){
             delete[] arr_To_Destroy[index];
         }
 
+        // free memory for main array and set to null ptr
         delete[] arr_To_Destroy;
         arr_To_Destroy=nullptr;
     }
 
-    void genome_Deconstructor(char* genome_arr, int size){
+
+    // deconstructory for genome character array
+    void genome_Deconstructor(char* genome_arr){
+        // free the memory for the character array and set pointer to nullptr
         delete[] genome_arr;
         genome_arr=nullptr;
     }
 
+
+    // copy to the contents of a string over to a character array
     void copy_String(char* main_Str, long location, long total_Size, const string to_Add){
-        int index = 0;
+        long index = 0;
+        long location_Index;
         
-        for(location; location < total_Size; location++){
-            main_Str[location] = to_Add[index];
+        // loop through the character array starting at a specified position and add the string characters
+        for(location_Index = location; location_Index < total_Size; location_Index++){
+            main_Str[location_Index] = to_Add[index];
             index++;
         }
     }
 
-    char* resize_Char_Arr(char* old_Char_Arr, long old_size, long new_size, bool is_First) {
+
+    // function for resizing the genome character array
+    char* resize_Char_Arr(char* old_Char_Arr, long new_size, bool is_First) {
         // create new array ptr
         char* new_Char_Arr = nullptr;
 
@@ -420,11 +390,8 @@ class Queries_AR {
         } catch (const std::bad_alloc& e) {
             // display error message for current function and return failure
             cerr << "Memory allocation failed in resize_Char_Arr: " << e.what() << endl;
-            //cout << "Memory allocation failed in resize_Char_Arr:\n";
             return nullptr;
         }
-
-        long index;
 
         // toggle for displaying debug statements
         if( debug_Statements ){
@@ -433,15 +400,8 @@ class Queries_AR {
 
         // check and make sure this is not the first creation of the array
         if (!is_First && old_Char_Arr != nullptr) {
-
-            // copy the old array into the new array index by index
-            // for (index = 0; index < old_size; index++) {
-            //     new_Char_Arr[index] = old_Char_Arr[index];
-            // }
-
-            //strcpy_s(new_Char_Arr, new_size, old_Char_Arr);
+            // copy the data from the old array over to the new one
             copy_String(new_Char_Arr, new_size, genome_Size, old_Char_Arr );
-    
 
             // toggle for displaying debug statements
             if( debug_Statements ) {
@@ -456,9 +416,12 @@ class Queries_AR {
         return new_Char_Arr;
     }
 
+
+    // function for resizing the array mainly responsible for scaffolds 
     string* resize_Str_Arr(string* old_Str_Arr, long old_size, long new_size, bool is_First) {
         // create new array ptr
         string* new_Str_Arr = nullptr;
+        long index;
 
         // toggle for displaying debug statements
         if( debug_Statements ){
@@ -474,11 +437,8 @@ class Queries_AR {
         } catch (const std::bad_alloc& e) {
             // display error message for current funciton and return failure
             cerr << "Memory allocation failed in resize_Str_Arr: " << e.what() << endl;
-            //cout << "Memory allocation failed in resize_Str_Arr:\n";
             return nullptr;
         }
-
-        long index;
 
         // toggle for displaying debug statements
         if( debug_Statements ){
@@ -507,9 +467,12 @@ class Queries_AR {
         return new_Str_Arr;
     }
 
+
+    // function for resizing an array of integers
     int* resize_Int_Arr(int* old_Int_Arr, long old_size, long new_size, bool is_First) {
         // create new array of Ints and set to nullptr
         int* new_Int_Arr = nullptr;
+        int index;
         
         // toggle for displaying debug statements
         if( debug_Statements ){
@@ -523,11 +486,8 @@ class Queries_AR {
 
         } catch (const std::bad_alloc& e) {
             cerr << "Memory allocation failed in resize_Int_Arr: " << e.what() << endl;
-            //cout << "Memory allocation failed in resize_Int_Arr:\n";
             return nullptr;
         }
-
-        int index;
 
         // toggle for displaying debug statements
         if( debug_Statements ){
@@ -537,7 +497,7 @@ class Queries_AR {
         // check and make sure this is not the first creation of the array
         if (!is_First && old_Int_Arr != nullptr) {
             // copy the contents from the old array over to the new array
-            for (int index = 0; index < old_size; index++) {
+            for (index = 0; index < old_size; index++) {
                 new_Int_Arr[index] = old_Int_Arr[index];
             }
 
@@ -550,164 +510,331 @@ class Queries_AR {
             delete[] old_Int_Arr;
         }
 
+        else{
+            // zero out indexs
+            for (index = 0; index < new_size; index++) {
+                    new_Int_Arr[index] = 0;
+                }
+        }
+        
         // return updated array
         return new_Int_Arr;
     }
 
     // merge sort function
-    void mergeSort( char** arr, int low, int high){
+    void mergeSort( int low, int high){
         if( low < high ){
-            int mid = low + ((high - low)/2);
+            int mid = low + (high - low)/2;
 
-            mergeSort(arr, low, mid);
-            mergeSort(arr, mid+1, high);
-            merge(arr, low, mid, high);
+            // sort the left side first recursively
+            mergeSort( low, mid);
+
+            // sort right side next recursivley
+            mergeSort( mid+1, high);
+
+            // merge sort left and right side together
+            merge( low, mid, high);
         }
     }
 
-    // this will need to be able to sort the queries into alphabetical order
-        // check the first letter
-        // move the first letter either left or right depending on the alphabetical order
-            // if the first letter is the same check the next letter
-            // continue until the characters are different and can be sorted
-    void merge(char** arr, int low, int mid, int high){
+    
+    // merge left array and right array together in a alphabetically sorted order
+    void merge( int low, int mid, int high){
         // initialize variables
         int indexLeft, indexRight, kVal, leftLength, rightLength;
         leftLength = mid-low+1;
         rightLength = high - mid;
         char leftArr[leftLength][fragment_Size], rightArr[rightLength][fragment_Size];
-        int char_Index;
 
-        // add left side values to temp left array
-        for(indexLeft=0; indexLeft < leftLength; indexLeft++){
-            // leftArr[indexLeft] = *arr[low+indexLeft];
-            copy_Col(leftArr[indexLeft], arr[low+indexLeft]);
+        // Copy left side values to temp left array
+        for(indexLeft = 0; indexLeft < leftLength; indexLeft++){
+            copy_Col(leftArr[indexLeft], false, low + indexLeft);
         }
 
-
-        // add right side values to temp right array
-        for(indexRight=0; indexRight < rightLength; indexRight++){
-            // rightArr[indexRight] = *arr[mid+1+indexRight];
-            copy_Col(rightArr[indexRight], arr[mid+indexRight]);
+        // Copy right side values to temp right array
+        for(indexRight = 0; indexRight < rightLength; indexRight++){           
+            copy_Col(rightArr[indexRight], false, mid + 1 + indexRight);
         }
 
-        // reset index values
-        indexLeft = 0, indexRight = 0, kVal = 1;
+        // set indexs for arrays
+        indexLeft = 0;
+        indexRight = 0;
+        kVal = low; 
 
-        // sort the arrays !!!!!!!!!Need to add in logic for testing alphabetical position
-        while( indexLeft < leftLength && indexRight < rightLength){
-            // check if the value at the left index is less than the value on the right index
-            if(leftArr[indexLeft] <= rightArr[indexRight]){
-                // arr[kVal] = leftArr[indexLeft];
-                copy_Col(arr[kVal], leftArr[indexLeft]);
+        // loop thorugh until one array has no more items left
+        while(indexLeft < leftLength && indexRight < rightLength){
+
+            // check if left character is smaller than right character
+            if(strcmp(leftArr[indexLeft], rightArr[indexRight]) <= 0){
+                // copy left character into main array and increment left index
+                copy_Col(leftArr[indexLeft], true, kVal);
                 indexLeft++;
-            }
-            // otherwise assume right value is less
-            else{
-                //arr[kVal] = rightArr[indexRight];
-                copy_Col(arr[kVal], rightArr[indexRight]);
+            } 
+            
+            // otherwise assume right was smaller
+            else {  
+                // copy right character into main array and increment right index      
+                copy_Col(rightArr[indexRight], true, kVal);
                 indexRight++;
             }
+
+            // increment main array index
             kVal++;
         }
-
-        // add the left side of the array to the return array
-        while(indexLeft<leftLength){
-            // arr[kVal] = leftArr[indexLeft];
-            copy_Col(arr[kVal], leftArr[indexLeft]);
-            kVal++;
+        
+        // Copy remaining elements from leftArr
+        while(indexLeft < leftLength){
+            copy_Col(leftArr[indexLeft], true, kVal);
             indexLeft++;
-        }
-
-        // add the right side of the array to the return array
-        while(indexRight<rightLength){
-            // arr[kVal] = rightArr[indexRight];
-            copy_Col(arr[kVal], rightArr[indexRight]);
             kVal++;
+        }
+        
+        // Copy remaining elements from rightArr
+        while(indexRight < rightLength){ 
+            copy_Col(rightArr[indexRight], true, kVal);
             indexRight++;
+            kVal++;
         }
     }
 
+
+    // sort array by pushing largest item to right most side of the array
     void bubbleSort(char** arr, int len){
         int innerIndex, outerIndex;
         bool swapped;
 
+        // main loop for sort
         for(outerIndex = 0; outerIndex < len-1; outerIndex++){
+            // set trigger to off
             swapped = false;
+
+            // loop thorugh and push large items to the right
             for(innerIndex = 0; innerIndex < len-outerIndex-1; innerIndex++){
+                // if left character is larger than right
                 if( arr[innerIndex] > arr[innerIndex+1]){
+                    // swap indexs
                     swap(arr[innerIndex], arr[innerIndex+1]);
+
+                    // set trigger to on
                     swapped=true;
                 }
             }
 
+            // if no swap occured in inner loop then sort is finished
             if(!swapped){
                 break;
             }
         }
-        
     }
 
-    void swap(char *oneVal, char *otherVal){
 
+    // swap the pointers of two items
+    void swap(char *oneVal, char *otherVal){
         int temp = *oneVal;
         *oneVal = *otherVal;
         *otherVal = temp;
     }
 
-    long linear_Search(string target, char** query, long start, long end, long query_Length){
-        int index; 
+    
+    // search for an item in an array starting from left side all the way to the right
+    void linear_Search(){
+        long index = 0; 
+        long queries_Found = 0;
+        long high, query_Itr;
+        long query_Index;
+        string target = "";
+        long target_Index;
         
-        for(index=0; index < query_Length; index++){
-            if(target == query[index]){
-                return index;
-            }
-        }
+        // iterate through the genome array unil end of genome or all fragments were found
+        while(index < genome_Size && queries_Found < query_Size){
+            // calculate end of fragment in genome
+            high = index + fragment_Size - 1;
+            
+            // check if its within the genome array
+            if( high < genome_Size ){
+                // reset target string
+                target = "";
 
-        return -1;
+                // copy fragment into target test string
+                for(target_Index = index; target_Index<high; target_Index++){
+                   target += genome_Data[target_Index];
+                }
+            }
+            
+            // check each query starting from starting index to ending index
+            for( query_Itr = 0; query_Itr < query_Size; query_Itr++ ){
+                // compare with the fragment 
+                // if a fragment was fond then the compare func will return its index in the query array
+                query_Index = compare_Query(target, query_Itr);
+                
+                // if that index thats returned is not -1 than change that index to value 1
+                if( query_Index != -1 ){
+                    found_Frags[query_Index] = 1;
+                    
+                    // increment the queries_Found count
+                    queries_Found++;
+
+                    // set timestamps
+                    if(queries_Found == 5000){
+                        time(&five_Thousand);
+                    }
+                    else if(queries_Found == 100000){
+                        time(&one_Hund_Thousand);
+                    }
+                    else if(queries_Found == 1000000){
+                        time(&one_Million);
+                    }
+                }
+            }  
+            
+            index++;         
+        }
     }
 
-    long binary_Search(string target, char** query, long low, long high){
-        while(low <= high){
-            long mid = low =((high-low)/2);
 
-            if(query[mid] == target){
-                return mid;
-            }
-
-            else if( query[mid] < target ){
-                low = mid+1;
-            }
-            else{
-                high = mid-1;
-            }
-        }
+    // search for a fragment in divide and conquerer approach
+    void binary_Search(){
+        long top_Range, index = 0, char_Index = 0;
+        long high = query_Size;
+        long low = 0;
+        long queries_Found = 0;
+        bool frag_Found = false;
+        long target_Index, queries_Checked = 0;
+        char target_Arr[fragment_Size]; 
         
-        return -1;
+        // loop through genome until end of genome or until all fragments are found
+        while(index < genome_Size && queries_Found < query_Size){
+            // reset variables for new loop
+            frag_Found = false;
+            queries_Checked = 0;
+            low = 0;
+            high = query_Size-1;
+            
+            // create the high for the test fragment
+            top_Range = index + fragment_Size - 1;
+            
+            // test if the high is in bounds
+            if( top_Range < genome_Size ){
+                char_Index = 0;
+
+                // read in 32 characters from genome ( index to top_Range )
+                for(target_Index = index; target_Index<top_Range; target_Index++){
+                    target_Arr[char_Index] = genome_Data[target_Index];
+                    char_Index++;
+                }
+                
+                // add terminating character to end to match query data
+                target_Arr[fragment_Size-1] = '\0';
+            }
+            
+            // now check for current test fragment in query array
+            // loop until low is at or greater the hgih
+            while(low <= high && !frag_Found && queries_Checked < query_Size-1){
+                // calculate the middle
+                long mid = low +((high-low)/2);
+    
+                // check if the mid value was the fragment and has not already been found
+                if(strcmp(query_Data[mid], target_Arr) == 0 && found_Frags[mid] != 1){
+                    
+                    // set fragment to found
+                    found_Frags[mid] = 1;
+
+                    // increment found fragment counter
+                    queries_Found++;
+                    
+                    // set timestamps
+                    if(queries_Found == 5000){
+                        time(&five_Thousand);
+                    }
+                    else if(queries_Found == 100000){
+                        time(&one_Hund_Thousand);
+                    }
+                    else if(queries_Found == 1000000){
+                        time(&one_Million);
+                    }
+                    
+                    // set trigger to on
+                    frag_Found = true;
+                }
+    
+                // othwerwise check if the mid is less than the target (alphabetical order wise)
+                else if( strcmp(query_Data[mid], target_Arr) < 0 ){
+                    // set low to right side 
+                    low = mid+1;
+                }
+
+                // otherwise assume on left side
+                else{
+                    // set high to left side
+                    high = mid-1;
+                }
+                
+                // increment checked counter to avoid over checking
+                queries_Checked++;
+            }
+            index++;
+        }
     }
     
-    void copy_Col(char dest[], char fragment[]){
+
+    // copy data to and from the query array
+    void copy_Col( char fragment[], bool to_Query, int row){
         int index;
 
-        for(index=0;index<fragment_Size;index++){
-            dest[index] = fragment[index];
+        // check if we need to copy data into query array
+        if(to_Query){
+            for(index=0;index<fragment_Size;index++){
+                query_Data[row][index] = fragment[index];
+            }
+        }
+
+        // otherwise assume taking data out of query array
+        else{
+            for(index=0;index<fragment_Size;index++){
+                fragment[index] = query_Data[row][index];
+            }
         }
     }
+    
 
-}; 
+    // compare if the query and the fragment are the same
+    int compare_Query(string target, long query_Row){
+        int index;
+        
+        // loop through the fragment string
+        for( index = 0; index < fragment_Size-1; index++){
+
+            // if the character does not match
+            if(target[index] != query_Data[query_Row][index]){              
+                //return query_Row;
+                return -1;
+            }
+        } 
+
+        // otherwise assume match      
+        //return -1;
+        return query_Row;
+    }
+};
 
 int main(int argc, char* argv[]){
     Queries_AR my_Query;
+    int index, col;
+    bool binary_Search = false;
+    time(&my_Query.prog_Start);
+    time_t stop_Watch = 0;
     
+    // stamp program start time
+    time(&stop_Watch);
+    cout << "Program Start at: " << ctime(&stop_Watch) << endl;
     
     // toggle for displaying debug statements
-    //if(my_Query.debug_Statements){
-    cout << "Debug mode on, program start\n";
-    //}
+    if(my_Query.debug_Statements){
+        cout << "Debug mode on, program start\n";
+    }
 
+    // initialize query data
     my_Query.initial_Construct();
-    
-    cout << "inital_Cunstruct function returned\n";
     
     // check if the program has the appropriate number of parameter
     // create error handler for no input file argument
@@ -715,51 +842,121 @@ int main(int argc, char* argv[]){
         cout << "Error please input the correct command in\n Program End";
         return 1;
     }
-
     
-    cout << "Calling to read_Query function\n";
+    // timestamp the start of the query file reader
+    time(&stop_Watch);
+    cout << "Beginning to read query file at: " << ctime(&stop_Watch) << endl;
     
     // read in the entire query dataset and store it in an instace of the Querie_AR class
     if(my_Query.read_Qurey(argv[2])){
         
+        // program progress outputs
         cout << "Sucessful return from read_Query function\n";
-        
-        // check for if the program will be donig binary search based off the command line parameters
-        if(argv[3] == "-binary"){
-        
-            cout << "About to begin sorting queries\n";
-        
-            // sort the query in alphabetical order then
-            my_Query.sortFragments(my_Query.query_Data, my_Query.query_Size, true);
-            
-            cout << "Query sort completed\n";
+        cout << "There were " << my_Query.query_Size << " Fragments" << endl;
+        cout << "\nDisplaying the first 15 unsorted queries" << endl;
+
+        // loop through first 15 queries and display to output
+        for(int index=0; index<15; index++){
+            cout << " ";
+
+            for(int col=0; col<my_Query.fragment_Size;col++){
+                cout << my_Query.query_Data[index][col];
+            }
+
+            cout << endl;
         }
         
+        // check for if the program will be donig binary search based off the command line parameters
+        if(strcmp(argv[3], "-binary") == 0){
+        
+            // timestamp for sort start
+            time(&stop_Watch);
+            cout << "Beginning fragment sort at: " << ctime(&stop_Watch) << endl;
+        
+            // if binary flag was true then set trigger for binary sort
+            binary_Search = true;
+
+            // sort the query in alphabetical order then
+            my_Query.sortFragments(my_Query.query_Data, my_Query.query_Size-1, true);
+            
+            // display first 15 sorted queries
+            cout << "\nDisplaying the first 15 SORTED queries" << endl;
+            for( index=0; index<15; index++){
+                cout << " ";
+                
+                for( col=0; col<my_Query.fragment_Size;col++){
+                    cout << my_Query.query_Data[index][col];
+    
+                }
+
+                cout << endl;
+            }
+        }
+        
+        // timestamp for genome file reader
+        time(&stop_Watch);
+        cout << "\n Starting genome file reader at: " << ctime(&stop_Watch) << endl;
         
         // read in the entire subject dataset into a single, concatenated character array
-        // if(file_reader(argv[1])){
-        //     // search the queries for every fragment ( pass in flag for desiered search algorithm )
+        if(my_Query.file_reader(argv[1])){
+            
+            cout << "\nGenome size: " << my_Query.genome_Size << endl;
 
-        //     // display search time for the first 5k, 10k, 100k, and 1M 32 character long fragments of the subject dataset within the query dataset
-
-        //     // how long would it take to search for every possible 32-long character fragment of the subject dataset within the query dataset
-
-        //     // display the first 15 fragments of the subject dataset along with its indicies that you found within the query_AR object
-        // }
-
-
-        // display program end
-        cout << "Displaying the first 15 SORTED queries" << endl;
-
-        for(int index=0; index<15; index++){
-            for(int col; col<my_Query.fragment_Size;col++){
-                cout << my_Query.query_Data[index][col] << endl;
-
+            // create fragment array of ints with each index set to 0
+            my_Query.found_Frags = my_Query.resize_Int_Arr(my_Query.found_Frags, 0, 
+                                                          my_Query.query_Size, true);
+            
+            // timestamp for search start
+            time(&stop_Watch);
+            cout << "Starting Search at: " << ctime(&stop_Watch) << endl;
+            
+            // search the queries for every fragment ( pass in flag for desiered search algorithm )
+            if( binary_Search ){
+                cout << "Conducting binary search\n\n";
+                my_Query.searchQuery(false);
             }
+
+            // otherwise assume linear search strategy
+            else {
+                cout << "Conducting Linear search\n\n";
+                my_Query.searchQuery(true);
+            }
+            
+            // timestamp for search completion
+            time(&stop_Watch);
+            cout << "Finished Search at: " << ctime(&stop_Watch) << endl;
+            
+            // display the first 15 fragments of the subject dataset along with its indicies that you found within the query_AR object
+            cout << "Displaying first 15 fragments\n";
+            for(index=0; index<15; index++){
+                cout << " " << my_Query.found_Frags[index] << endl;
+            }
+            
+            // display all timestamps
+            cout << "\n\n";
+            cout << "PROGRAM STARTED     : " << ctime(&my_Query.prog_Start) << endl;
+            
+            if( my_Query.five_Thousand != 0 ){
+                cout << "First 5k fragments  : " << ctime(&my_Query.five_Thousand) << endl;
+            }
+            if( my_Query.one_Hund_Thousand != 0 ){
+                cout << "First 100k fragments: " << ctime(&my_Query.one_Hund_Thousand) << endl;
+            }
+            if( my_Query.one_Million != 0 ){
+                cout << "First 1M fragments  : " << ctime(&my_Query.one_Million) << endl;
+            }
+            
+            time(&my_Query.prog_End);
+            cout << "PROGRAM END         : " << ctime(&my_Query.prog_End) << endl;
+            
         }
     }
     
-    cout << "Program End\n";
+    // free memory for query and genome arrays
+    my_Query.qurey_Deconstructor(my_Query.query_Data, my_Query.query_Size);
+    my_Query.genome_Deconstructor(my_Query.genome_Data);
+    
+    cout << "\nProgram End\n";
     
     return 0;
 }
